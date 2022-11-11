@@ -1,3 +1,9 @@
+## 0.0.2 2022-11-11 <dave at tiredofit dot ca>
+
+   ### Added
+      - export RCLONE_CONFIG_FILE
+
+
 ## 0.0.1 2022-11-10 <dave at tiredofit dot ca>
 
    ### Added

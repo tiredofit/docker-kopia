@@ -63,6 +63,7 @@ bootstrap() {
     echo "export KOPIA_CACHE_DIRECTORY=${CACHE_PATH}" >> /root/.bashrc
     echo "export KOPIA_CONFIG_PATH=${CONFIG_PATH}/${CONFIG_FILE}" >> /root/.bashrc
     echo "export KOPIA_LOG_DIR=${LOG_PATH}" >> /root/.bashrc
+    echo "export RCLONE_CONFIG_FILE=${RCLONE_CONFIG_FILE}" >> /root/.bashrc
     echo "export TZ=${TIMEZONE}" >> /root/.bashrc
 }
 
