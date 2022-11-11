@@ -284,7 +284,6 @@ setup_container_mode() {
                 sanity_var REPOSITORY_FINGERPRINT "Talk to Administrator about Repository Fingerprint"
                 sanity_var REPOSITORY_HOST "Remote repository Host eg 'https://host:port'"
                 #setup_password
-                set -x
                 kopia repository connect server \
                         --config-file="${CONFIG_PATH}"/"${CONFIG_FILE}" \
                         --no-check-for-updates \

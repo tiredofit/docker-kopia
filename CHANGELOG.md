@@ -1,3 +1,9 @@
+## 0.0.3 2022-11-11 <dave at tiredofit dot ca>
+
+   ### Changed
+      - Swap around UI_ADMIN_* and ADMIN_* variables
+
+
 ## 0.0.2 2022-11-11 <dave at tiredofit dot ca>
 
    ### Added
