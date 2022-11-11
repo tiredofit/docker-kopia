@@ -1,0 +1,12 @@
+#!/command/with-contenv bash
+
+source /assets/functions/00-container
+prepare_service
+PROCESS_NAME="kopia"
+
+benchmark
+bootstrap
+configure_tls
+setup_container_mode
+
+liftoff

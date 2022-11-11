@@ -1,0 +1,49 @@
+version: '2.4'
+services:
+
+  kopia-app:
+    image: tiredofit/kopia:develop
+    container_name: kopia-app
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.kopia-app.rule=Host(`kopia.example.com`)
+      - traefik.http.services.kopia-app.loadbalancer.server.scheme=https
+      - traefik.http.services.kopia-app.loadbalancer.server.port=51115
+    #ports:
+      #- 51115:51115
+    volumes:    
+      #- ./backup:/backup # Only needed if backing up to local system
+      - ./cache:/cache   # 
+      - ./config:/config # Persistent Configuration
+      - ./logs:/logs     # Log Files
+      - /:/rootfs:ro     # A Way to Access files on your local host system in order to backup
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+    devices:
+        - /dev/fuse:/dev/fuse:rwm
+    environment:
+      - TIMEZONE=America/Vancouver
+      - CONTAINER_NAME=kopia-app
+
+#      - DEBUG_MODE=TRUE
+      - MODE=repository # This can also act as a server at the same time and back up its own self
+
+      - ENABLE_TLS=TRUE # Forced mandatory anyways
+
+      - KOPIA_HOSTNAME=host_to_present_to_repo_server
+      - KOPIA_USER=user_to_present_to_repo_server
+      - REPOSITORY_PASS=password_to_open_repository
+
+    networks:
+      - proxy
+      - services
+    restart: always
+
+networks:
+  proxy:
+    external: true
+  services:
+    external: true
+
+

@@ -1,0 +1,75 @@
+#!/command/with-contenv bash
+
+source /assets/functions/00-container
+prepare_service
+source /assets/defaults/10-kopia
+source /assets/functions/10-kopia
+PROCESS_NAME="kopia"
+
+
+export TZ=${TIMEZONE}
+
+#cd "${LOG_PATH}"/
+
+if var_true "${ENABLE_ACTIONS}" ; then
+    action_args="--enable-actions"
+else
+    action_args="--no-enable-actions"
+fi
+
+if var_true "${ENABLE_GUI}" ; then
+    gui_args="--ui --server-username=${UI_ADMIN_USER} --server-password=${UI_ADMIN_PASS}"
+    export KOPIA_UI_TITLE_PREFIX=${UI_SITE_TITLE_PREFIX}
+else
+    gui_args="--no-ui"
+fi
+
+if var_true "${ENABLE_TLS}" ; then
+    certificates
+    case "${MODE,,}" in
+        repository )
+            print_notice "[repository] Provide this SHA256 Hash to clients: $(${ssl_exec} x509 -in "${TLS_CERT_FILE}" -noout -fingerprint -sha256 | sed 's/://g' | cut -f 2 -d =)"
+            grpc_args="--grpc"
+        ;;
+    esac
+    tls_args="--tls-cert-file=${TLS_CERT_FILE} --tls-key-file=${TLS_KEY_FILE}"
+else
+    tls_args="--insecure"
+fi
+
+if var_true "${PERSIST_CREDENTIALS}" ; then
+    persist_credentials="--persist-credentials"
+else
+    persist_credentials="--no-persist-credentials"
+fi
+
+export KOPIA_CACHE_DIRECTORY="${CACHE_PATH}"
+export KOPIA_CONFIG_PATH="${CONFIG_PATH}"/"${CONFIG_FILE}"
+export KOPIA_LOG_DIR="${LOG_PATH}"
+export KOPIA_PASSWORD=${REPOSITORY_PASS}
+export TZ="${TIMEZONE}"
+liftoff
+
+print_start "Starting Kopia Server ${KOPIA_VERSION}"
+cd "${LOG_PATH}"
+
+#exec s6-setuidgid kopia kopia \
+exec kopia \
+        server \
+        start \
+        --address="0.0.0.0:${KOPIA_LISTEN_PORT}" \
+        --config-file="${CONFIG_PATH}"/"${CONFIG_FILE}" \
+        --disable-csrf-token-checks \
+        --no-check-for-updates \
+        --no-use-keyring \
+        --log-dir=${LOG_PATH} \
+        --log-level=${LOG_LEVEL,,} \
+        --file-log-level=${LOG_LEVEL_FILE,,} \
+        --log-file="${LOG_FILE}" \
+        --override-username=${KOPIA_USER} \
+        --timezone="${TIMEZONE}" \
+        ${gui_args} ${grpc_args} ${persist_credentials} ${tls_args} ${KOPIA_SERVER_ARGS}
+
+# --override-username=kopia@metal --server-username=kopia@metal --server-password=zaqwsx
+
+

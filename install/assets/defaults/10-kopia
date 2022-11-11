@@ -1,0 +1,43 @@
+#!/command/with-contenv bash
+
+AUTH_FILE=${AUTH_FILE:-"kopia.auth"}
+UI_ADMIN_USER=${ADMIN_USER:-"kopia"}
+UI_ADMIN_PASS=${ADMIN_PASS:-"kopia"}
+BACKUP_PATH=${BACKUP_PATH:-"/backup/"}
+CONFIG_PATH=${CONFIG_PATH:-"/config/"}
+CONFIG_FILE=${CONFIG_FILE:-"repository.config"}
+CACHE_PATH=${CACHE_PATH:-"/cache/"}
+ENABLE_BENCHMARK=${ENABLE_BENCHMARK:-"FALSE"}
+ENABLE_ACTIONS=${ENABLE_ACTIONS:-"TRUE"}
+ENABLE_GUI=${ENABLE_GUI:-"TRUE"}
+ENABLE_TLS=${ENABLE_TLS:-"TRUE"}
+KOPIA_HOSTNAME=${KOPIA_HOSTNAME:-"docker"}
+KOPIA_LISTEN_PORT=${KOPIA_LISTEN_PORT:-"51115"}
+KOPIA_USER=${KOPIA_USER:-"kopia@repohost"}
+LOG_FILE=${LOG_FILE:-"kopia.log"}
+LOG_LEVEL=${LOG_LEVEL:-"info"}
+LOG_LEVEL_FILE=${LOG_LEVEL_FILE:-"debug"}
+LOG_PATH=${LOG_PATH:-"/logs/"}
+LOG_TYPE=${LOG_TYPE:-"BOTH"}
+PERSIST_CREDENTIALS=${PERSIST_CREDENTIALS:-"false"}
+RCLONE_CONFIG_FILE=${RCLONE_CONFIG_FILE:-"${CONFIG_PATH}/rclone.conf"}
+TLS_CERT_FILE=${TLS_CERT_FILE:-"/certs/cert.crt"}
+TLS_DH_PARAM_FILE=${TLS_DH_PARAM_FILE:-"/certs/dhparam.pem"}
+TLS_DH_PARAM_KEYSIZE=${TLS_DH_PARAM_KEYSIZE:-"1024"}
+TLS_ENABLE_DH_PARAM=${TLS_ENABLE_DH_PARAM:-"FALSE"}
+TLS_KEY_FILE=${TLS_KEY_FILE:-"/certs/cert.key"}
+UI_SITE_TITLE_PREFIX=${UI_SITE_TITLE_PREFIX:-"Kopia Docker - "}
+
+case "${MODE,,}" in
+    repository)
+        ENABLE_TLS=TRUE
+    ;;
+esac
+
+if [ -n "${REPOSITORY_HOST}" ] ; then
+    if [ "$(echo ${REPOSITORY_HOST} | cut -d : -f 3)" = "" ] ; then
+        REPOSITORY_HOST="${REPOSITORY_HOST}:443"
+    fi
+fi
+
+export TZ="${TIMEZONE}"

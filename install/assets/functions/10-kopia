@@ -1,0 +1,320 @@
+#!/command/with-contenv bash
+
+benchmark() {
+    crypto() {
+        print_notice "[benchmark_crypto] Performing Benchmark, please wait"
+        silent sudo -u kopia kopia benchmark crypto --print-options "${kopia_args}"
+    }
+
+    ecc() {
+        print_notice "[benchmark_ecc] Performing Benchmark, please wait"
+        silent sudo -u kopia kopia benchmark ecc --print-options "${kopia_args}"
+    }
+
+    encrypt() {
+        print_notice "[benchmark_encrypt] Performing Benchmark, please wait"
+        silent sudo -u kopia kopia benchmark encryption --print-options "${kopia_args}"
+    }
+
+    hash() {
+        print_notice "[benchmark_hash] Performing Benchmark, please wait"
+        silent sudo -u kopia kopia benchmark hashing --print-options "${kopia_args}"
+    }
+
+    split() {
+        print_notice "[benchmark_split] Performing Benchmark, please wait"
+        silent sudo -u kopia kopia benchmark splitter --print-options "${kopia_args}"
+    }
+
+
+    if var_true "${ENABLE_BENCHMARK}" ; then
+        kopia_args="--log-dir=${LOG_PATH} --timezone=${TIMEZONE}"
+        crypto
+        ecc
+        encrypt
+        hash
+        split
+    fi
+}
+
+bootstrap() {
+    if [ ! -d "${BACKUP_PATH}" ] ; then
+        mkdir -p "${BACKUP_PATH}"
+    fi
+
+    if [ ! -d "${CACHE_PATH}" ] ; then
+        mkdir -p "${CACHE_PATH}"
+    fi
+
+    if [ ! -d "${CONFIG_PATH}" ] ; then
+        mkdir -p "${CONFIG_PATH}"
+    fi
+
+    if [ ! -d "${LOG_PATH}" ] ; then
+        mkdir -p "${LOG_PATH}"
+    fi
+
+    chown kopia:kopia "${BACKUP_PATH}"
+    chown kopia:kopia "${CACHE_PATH}"
+    chown -R kopia:kopia "${CONFIG_PATH}"
+    chown -R kopia:kopia "${LOG_PATH}"
+
+    #echo "alias kopia=\"sudo -Eu KOPIA_LOG_DIR=\""${LOG_PATH}"\" kopia kopia --log-file=\""${LOG_FILE}"\" --timezone=\""${TIMEZONE}"\"\"" >> /root/.bashrc
+    echo "export KOPIA_CACHE_DIRECTORY=${CACHE_PATH}" >> /root/.bashrc
+    echo "export KOPIA_CONFIG_PATH=${CONFIG_PATH}/${CONFIG_FILE}" >> /root/.bashrc
+    echo "export KOPIA_LOG_DIR=${LOG_PATH}" >> /root/.bashrc
+    echo "export TZ=${TIMEZONE}" >> /root/.bashrc
+}
+
+certificates() {
+    CA_NAME=kopia-selfsigned-ca
+    CA_SUBJECT=${CA_SUBJECT:-"/C=IO/ST=Kopia/L=TiredofIT/O=Docker/CN="}
+    CA_CERT_SUBJECT=${CA_CERT_SUBJECT:-${CA_SUBJECT}${CA_NAME}}
+    CA_CERT_FILE=${CA_CERT_FILE:-"/certs/${CA_NAME}/${CA_NAME}.crt"}
+    CA_KEY_FILE=${CA_KEY_FILE:-"$(dirname "${CA_CERT_FILE}")/${CA_NAME}.key"}
+    CREATE_CA=${CREATE_CA:-"TRUE"}
+
+    create_certificate_authority() {
+        if [ ! -f "${CA_CERT_FILE}" ] ; then
+
+            print_debug "[certificates | create_certificate_authority] Creating Self Signed Certificate Authority"
+            mkdir -p "$(dirname "${CA_CERT_FILE}")"
+            echo "000a" > "$(dirname "${CA_CERT_FILE}")"/serial
+            touch "$(dirname "${CA_CERT_FILE}")"/certindex
+
+            silent eval "${ssl_exec} req \
+                  -newkey rsa:4096 -keyout ${CA_KEY_FILE} \
+                  -x509 -days 3650 -nodes -out ${CA_CERT_FILE} \
+                  -subj \"${CA_CERT_SUBJECT}\""
+
+            cat > "$(dirname "${CA_CERT_FILE}")"/$CA_NAME.conf << EOF
+            [ ca ]
+            default_ca = $CA_NAME
+
+            [ $CA_NAME ]
+            unique_subject = no
+            new_certs_dir = .
+            certificate = ${CA_CERT_FILE}
+            database = "$(dirname "${CA_CERT_FILE}")"/certindex
+            private_key = ${CA_KEY_FILE}
+            serial = "$(dirname "${CA_CERT_FILE}")"/serial
+            default_days = 3650
+            default_md = default
+            policy = ${CA_NAME}_policy
+            x509_extensions = ${CA_NAME}_extensions
+
+            [ ${CA_NAME}_policy ]
+            commonName = supplied
+            stateOrProvinceName = supplied
+            countryName = supplied
+            emailAddress = optional
+            organizationName = supplied
+            organizationalUnitName = optional
+
+            [ ${CA_NAME}_extensions ]
+            basicConstraints = CA:false
+            subjectKeyIdentifier = hash
+            authorityKeyIdentifier = keyid:always
+            keyUsage = digitalSignature,keyEncipherment
+            extendedKeyUsage = serverAuth,clientAuth
+
+            [ req ]
+            default_bits		= 2048
+
+            [default_conf]
+            ssl_conf = ssl_sect
+
+            [ssl_sect]
+            system_default = system_default_sect
+
+            [system_default_sect]
+            MinProtocol = TLSv1.1
+            MaxProtocol = TLSv1.2
+            CipherString = DEFAULT
+EOF
+        else
+            print_debug "[certificates | create_certificate_authority] CA Already Exists"
+        fi
+    }
+
+    create_certificate() {
+        if [ "$1" != "" ] ; then
+            if var_true "$CREATE_CA" ; then
+                if [ ! -f "${CA_CERT_FILE}" ] || [ ! -f "${CA_KEY_FILE}" ] ; then
+                    print_debug "[certificates | create_certificate] No CA Found - Creating before generating certificates"
+                    create_certificate_authority
+                fi
+            fi
+            CERT_SUBJECT="${CA_SUBJECT}$(basename "${1%%.*}")"
+
+            if var_true "$CREATE_CA" ; then
+                if [ ! -f "${1%%.*}".key ] ; then
+                    print_debug "[certificates | create_certificate] Creating Certificate: ${1}"
+                    silent eval "${ssl_exec} req \
+                            -newkey rsa:2048 -keyout ${1%%.*}.key \
+                          -nodes -out ${1%%.*}.csr \
+                          -subj \"${CERT_SUBJECT}\""
+                fi
+            else
+                if [ ! -f "${1%%.*}".key ] ; then
+                    print_debug "[certificates | create_certificate] Creating Certificate: ${1}"
+                    silent eval "${ssl_exec} req \
+                          -new -x509 -nodes -days 3650
+                          -config /tmp/openssl.cnf
+                          -out ${1%%.*}.crt \
+                          -keyout ${1%%.*}.key"
+                fi
+            fi
+
+            if var_true "${CREATE_CA}" ; then
+                if [ ! -f "${1%%.*}".cert ] ; then
+                    print_debug "[certificates | create_certificate] Signing Certificate: ${1}"
+                    silent eval "${ssl_exec} ca -batch -config $(dirname "${CA_CERT_FILE}")/${CA_NAME}.conf -notext -in ${1%%.*}.csr -out ${1%%.*}.crt"
+                    rm -rf "$(tail -n 1 "$(dirname "${CA_CERT_FILE}")"/certindex | awk '{print $3}').pem"
+                    rm -rf "${1%%.*}".csr
+                fi
+            fi
+
+            if [ -f "${1%%.*}".crt ] && [ -f "${1%%.*}".key ] ; then
+                print_debug "[certificates | create_certificate] Merging Certificate and Key for: ${1}"
+                   cat "${1%%.*}".crt "${1%%.*}".key > "${1%%.*}".pem
+            fi
+
+            if [ ! -f "${1%%.*}"-public.pem ] ; then
+                print_debug "[certificates | create_certificate] Creating Public Key for: ${1}"
+                silent ${ssl_exec} rsa -in "${1%%.*}".pem -out "${1%%.*}"-public.pem -outform PEM -pubout
+            fi
+        fi
+    }
+
+    check_permissions() {
+        if sudo -u kopia [ ! -r "${1}" ] ; then
+            print_debug "[certificates | check_permissions] Setting Read Permissions on ${1}"
+            silent chmod 444 "${1}" > /dev/null 2>&1
+        fi
+    }
+
+    check_certificates() {
+        print_debug "[certificates | check_certificates] Checking Existence of ${1}"
+        if [ ! -f "${1}" ] ; then
+                mkdir -p "$(dirname "${1}")"
+                create_certificate "${1}"
+        fi
+    }
+
+    check_dhparam() {
+        print_debug "[certificates | check_dhparam] Checking Existence of ${TLS_DH_PARAM_FILE}"
+        if [ ! -f "${TLS_DH_PARAM_FILE}" ] ; then
+                create_dhparam
+        fi
+    }
+
+    create_dhparam() {
+        print_notice "[certificates | create_dhparam] Creating ${TLS_DH_PARAM_FILE}"
+        mkdir -p "$(dirname "${TLS_DH_PARAM_FILE}")"
+        silent ${ssl_exec} dhparam -out "${TLS_DH_PARAM_FILE}" "${TLS_DH_PARAM_KEYSIZE}"
+    }
+
+    trust_ca() {
+        if var_true "$CREATE_CA" ; then
+            if [ -f "${CA_CERT_FILE}" ]; then
+                if [ ! -f /usr/local/share/ca-certificates/"$(basename "${CA_CERT_FILE}")" ] ; then
+                    print_debug "[certificates | trust_ca] Trusting CA ${CA_NAME}"
+                    ln -sf "${CA_CERT_FILE}" /usr/local/share/ca-certificates/
+                    silent update-ca-certificates
+                fi
+            fi
+        fi
+    }
+
+    if ! command -v openssl &> /dev/null && ! command -v libressl &> /dev/null ; then
+        print_error "[certificates] Can't find a suitable SSL engine - Exiting.."
+        exit 1
+    fi
+
+    if command -v libressl &> /dev/null ; then
+        ssl_exec="libressl"
+    fi
+
+    if command -v openssl &> /dev/null ; then
+        ssl_exec="openssl"
+    fi
+
+    if command -v openssl &> /dev/null &&  command -v libressl &> /dev/null ; then
+        ssl_exec="openssl"
+    fi
+
+    case "${1,,}" in
+        "dhparam" )
+            check_dhparam
+        ;;
+        *)
+            cert_string="${1}"
+            check_certificates "${cert_string}"
+            check_permissions "${cert_string}"
+            trust_ca
+        ;;
+    esac
+}
+
+configure_tls() {
+    if var_true "${ENABLE_TLS}" ; then
+        if var_true "${TLS_ENABLE_DHPARAM}" ; then certificates dhparam ; fi
+        certificates "${TLS_CERT_FILE}"
+    fi
+}
+
+setup_password() {
+    if [ -n "${REPOSITORY_PASS}" ] && [ ! -f "${CONFIG_PATH}"/"${CONFIG_PATH}"/"${CONFIG_FILE}".kopia-password ] ; then
+        echo "${REPOSITORY_PASS}" | base64 | silent sudo -u kopia tee "${CONFIG_PATH}"/"${CONFIG_FILE}".kopia-password
+        chmod 600 "${CONFIG_PATH}"/"${CONFIG_FILE}".kopia-password
+    fi
+}
+
+setup_container_mode() {
+    case "${MODE,,}" in
+        client)
+            print_info "[container_mode] Enabling Client Mode"
+            if [ ! -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
+                print_notice "Connecting to remote repository '${REPOSITORY_HOST}'"
+                sanity_var KOPIA_USER "Username to connect to remote repository eg 'user'"
+                sanity_var KOPIA_HOSTNAME "Hostname to connect to remote repository eg 'yourhost'"
+                sanity_var REPOSITORY_PASS "Pass to connect to remote repository"
+                sanity_var REPOSITORY_FINGERPRINT "Talk to Administrator about Repository Fingerprint"
+                sanity_var REPOSITORY_HOST "Remote repository Host eg 'https://host:port'"
+                #setup_password
+                set -x
+                kopia repository connect server \
+                        --config-file="${CONFIG_PATH}"/"${CONFIG_FILE}" \
+                        --no-check-for-updates \
+                        --no-use-keyring \
+                        --log-dir="${LOG_PATH}" \
+                        --log-level=${LOG_LEVEL,,} \
+                        --file-log-level=${LOG_LEVEL_FILE,,} \
+                        --log-file="${LOG_FILE}" \
+                        --override-hostname=${KOPIA_HOSTNAME} \
+                        --override-username=${KOPIA_USER} \
+                        --password=${REPOSITORY_PASS} \
+                        --server-cert-fingerprint="${REPOSITORY_FINGERPRINT}" \
+                        --timezone="${TIMEZONE}" \
+                        --url ${REPOSITORY_HOST}
+            fi
+        ;;
+        repository)
+            print_info "[container_mode] Enabling Repository Mode"
+            if [ ! -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
+                print_notice "[container_mode | repository ] No Repositories setup - Make sure you setup a repository via the GUI or CLI before any other operations"
+            fi
+
+            #setup_password
+        ;;
+        server)
+            print_info "[container_mode] Enabling Server Mode"
+            #setup_password
+        ;;
+        *)
+            print_error "Unknown 'MODE' environment variable - exitting.."
+            exit 1
+        ;;
+    esac
+}
