@@ -1,4 +1,22 @@
-## 0.0.4 2022-11-11 <dave at tiredofit dot ca>
+## 0.4.3 2022-11-12 <dave at tiredofit dot ca>
+
+   ### Changed
+      - Bugfixes and polish for 0.4.x
+
+
+## 0.4.2 2022-11-11 <dave at tiredofit dot ca>
+
+   ### Changed
+      - Give option to use Fingerprint mode or not for server and repository
+
+
+## 0.4.1 2022-11-11 <dave at tiredofit dot ca>
+
+   ### Added
+      - Added Fingerprint check on MODE=client if ENABLE_TLS=TRUE
+
+
+## 0.4.0 2022-11-11 <dave at tiredofit dot ca>
 
    ### Added
       - Add new MODEs = 'manual' for starting Kopia Server with no arguments. Use KOPIA_EXTRA_OPTS to tack on your own options
@@ -9,19 +27,19 @@
       - Continued cleanup and refinement of image
 
 
-## 0.0.3 2022-11-11 <dave at tiredofit dot ca>
+## 0.1.2 2022-11-11 <dave at tiredofit dot ca>
 
    ### Changed
       - Swap around UI_ADMIN_* and ADMIN_* variables
 
 
-## 0.0.2 2022-11-11 <dave at tiredofit dot ca>
+## 0.1.1 2022-11-11 <dave at tiredofit dot ca>
 
    ### Added
       - export RCLONE_CONFIG_FILE
 
 
-## 0.0.1 2022-11-10 <dave at tiredofit dot ca>
+## 0.1.0 2022-11-10 <dave at tiredofit dot ca>
 
    ### Added
       - Initial Release
