@@ -1,3 +1,9 @@
+## 0.5.0 2022-11-12 <dave at tiredofit dot ca>
+
+   ### Added
+      - Add prometheus metrics
+
+
 ## 0.4.3 2022-11-12 <dave at tiredofit dot ca>
 
    ### Changed

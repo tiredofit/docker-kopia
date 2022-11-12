@@ -21,6 +21,26 @@ case "${MODE,,}" in
             gui_args="--no-ui"
         fi
 
+        if var_true "${ENABLE_METRICS}" ; then
+            print_debug "[metrics] Enabling Metrics"
+            case "${METRICS_TYPE}" in
+                push )
+                    print_debug "[metrics | push] Selected Push Mode"
+                    if [ -n "${METRICS_PUSH_HOST}" ] ; then metrics_args="${metrics_arg} --metrics-push-addr=${METRICS_PUSH_HOST}" ; fi
+                    if [ -n "${METRICS_PUSH_FORMAT}" ] ; then metrics_args="${metrics_arg} --metrics-push-format=${METRICS_PUSH_HOST}" ; fi
+                    if [ -n "${METRICS_PUSH_GROUPING}" ] ; then metrics_args="${metrics_arg} --metrics-push-grouping=${METRICS_PUSH_GROUPING}" ; fi
+                    if [ -n "${METRICS_PUSH_INTERVAL}" ] ; then metrics_args="${metrics_arg} --metrics-push-interval=${METRICS_PUSH_INTERVAL}" ; fi
+                    if [ -n "${METRICS_PUSH_JOB}" ] ; then metrics_args="${metrics_arg} --metrics-push-job=${METRICS_PUSH_JOB}" ; fi
+                    if [ -n "${METRICS_PUSH_PASS}" ] ; then metrics_args="${metrics_arg} --metrics-push-password=${METRICS_PUSH_PASS}" ; fi
+                    if [ -n "${METRICS_PUSH_USER}" ] ; then metrics_args="${metrics_arg} --metrics-push-username=${METRICS_PUSH_USER}" ; fi
+                ;;
+                normal | listen | * )
+                    print_debug "[metrics | normal] Selected Normal/Listen Mode on ${METRICS_LISTEN_PORT}"
+                    metrics_args="--metrics-listen-addr=0.0.0.0:${METRICS_LISTEN_PORT}"
+                ;;
+            esac
+        fi
+
         if var_true "${ENABLE_TLS}" ; then
             certificates
             case "${MODE,,}" in
@@ -60,13 +80,13 @@ case "${MODE,,}" in
                 --disable-csrf-token-checks \
                 --no-check-for-updates \
                 --no-use-keyring \
-                --log-dir=${LOG_PATH} \
-                --log-level=${LOG_LEVEL,,} \
-                --file-log-level=${LOG_LEVEL_FILE,,} \
+                --log-dir="${LOG_PATH}" \
+                --log-level="${LOG_LEVEL,,}" \
+                --file-log-level="${LOG_LEVEL_FILE,,}" \
                 --log-file="${LOG_FILE}" \
-                --override-username=${KOPIA_USER} \
+                --override-username="${KOPIA_USER}" \
                 --timezone="${TIMEZONE}" \
-                ${gui_args} ${grpc_args} ${persist_credentials} ${tls_args} ${KOPIA_SERVER_ARGS}
+                ${gui_args} ${grpc_args} ${metrics_args} ${persist_credentials} ${tls_args} ${KOPIA_SERVER_ARGS}
     ;;
     manual )
         print_start "Starting Kopia Server ${KOPIA_VERSION} in manual mode with user supplied arguments"
