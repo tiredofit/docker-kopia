@@ -32,24 +32,39 @@ fi
 
 while true; do
     fingerprint_check_start_time=$(date +"%s")
-    print_info "Fingerprint Check routines started time: $(date +'%Y-%m-%d %T %Z')"
-    case "${MODE,,}" in
-        client )
-            if [ -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
-                fingerprint check_config
-                fingerprint check_remote
-                fingerprint compare_config_remote
-                if var_true "${FINGERPRINT_ROTATE_AUTO}" && [ "${compared_config_remote}" = "different" ] ; then
-                    fingerprint rotate_config
-                    reload
+    print_debug "Fingerprint Check routines started time: $(date +'%Y-%m-%d %T %Z')"
+    if pgrep -f kopia &> /dev/null 2>&1; then
+        case "${MODE,,}" in
+            client )
+                if [ -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
+                    fingerprint check_config
+                    fingerprint check_remote
+                    fingerprint compare_config_remote
+                    if var_true "${FINGERPRINT_ROTATE_AUTO}" && [ "${compared_config_remote}" = "different" ] ; then
+                        fingerprint rotate_config
+                        reload
+                    else
+                        print_debug "Skipping rotating configuration fingerprint"
+                    fi
                 else
-                    print_debug "Skipping rotating configuration fingerprint"
+                    print_info "No Configuration file - Skipping"
                 fi
-            else
-                print_info "No Configuration file - Skipping"
-            fi
 
-            if var_true "${ENABLE_TLS}" ; then
+                if var_true "${ENABLE_TLS}" ; then
+                    if [ ! -f "${CONFIG_PATH}"/.local_fingerprint ] ; then
+                        fingerprint write_local
+                    else
+                        fingerprint check_local
+                        fingerprint compare_local
+                        if [ "${compared_local}" = "different" ] ; then
+                            print_info "Detected new fingerprint"
+                            fingerprint write_local
+                            reload
+                        fi
+                    fi
+                fi
+            ;;
+            server | repository )
                 if [ ! -f "${CONFIG_PATH}"/.local_fingerprint ] ; then
                     fingerprint write_local
                 else
@@ -61,33 +76,20 @@ while true; do
                         reload
                     fi
                 fi
-            fi
-        ;;
-        server | repository )
-            if [ ! -f "${CONFIG_PATH}"/.local_fingerprint ] ; then
-                fingerprint write_local
-            else
-                fingerprint check_local
-                fingerprint compare_local
-                if [ "${compared_local}" = "different" ] ; then
-                    print_info "Detected new fingerprint"
-                    fingerprint write_local
-                    reload
-                fi
-            fi
-        ;;
-    esac
-
+            ;;
+        esac
+    else
+        print_debug "Not running check routines as Kopia is not running"
     fingerprint_check_finish_time=$(date +"%s")
     fingerprint_check_total_time=$(echo $((fingerprint_check_finish_time-fingerprint_check_start_time)))
-    print_info "Fingerprint Check routines finish time: $(date -d @${fingerprint_check_finish_time} +"%Y-%m-%d %T %Z")"
+    print_debug "Fingerprint Check routines finish time: $(date -d @${fingerprint_check_finish_time} +"%Y-%m-%d %T %Z")"
     print_debug "Fingerprint Check routines time taken: $(echo ${fingerprint_check_total_time} | awk '{printf "Hours: %d Minutes: %02d Seconds: %02d", $1/3600, ($1/60)%60, $1%60}')"
 
     if var_true "${manual}" ; then
         print_debug "Exiting due to manual mode"
         exit 0;
     else
-        print_notice "Sleeping for another $(($FINGERPRINT_CHECK_TIME_FREQ*60-cleanup_total_time)) seconds. Waking up at $(date -d@"$(( $(date +%s)+$(($FINGERPRINT_CHECK_TIME_FREQ*60-fingerprint_check_total_time))))" +"%Y-%m-%d %T %Z") "
+        print_debug "Sleeping for another $(($FINGERPRINT_CHECK_TIME_FREQ*60-cleanup_total_time)) seconds. Waking up at $(date -d@"$(( $(date +%s)+$(($FINGERPRINT_CHECK_TIME_FREQ*60-fingerprint_check_total_time))))" +"%Y-%m-%d %T %Z") "
         sleep $(($FINGERPRINT_CHECK_TIME_FREQ*60-fingerprint_check_total_time))
     fi
 done
