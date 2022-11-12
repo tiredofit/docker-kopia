@@ -48,6 +48,20 @@ while true; do
             else
                 print_info "No Configuration file - Skipping"
             fi
+
+            if var_true "${ENABLE_TLS}" ; then
+                if [ ! -f "${CONFIG_PATH}"/.local_fingerprint ] ; then
+                    fingerprint write_local
+                else
+                    fingerprint check_local
+                    fingerprint compare_local
+                    if [ "${compared_local}" = "different" ] ; then
+                        print_info "Detected new fingerprint"
+                        fingerprint write_local
+                        reload
+                    fi
+                fi
+            fi
         ;;
         server | repository )
             if [ ! -f "${CONFIG_PATH}"/.local_fingerprint ] ; then

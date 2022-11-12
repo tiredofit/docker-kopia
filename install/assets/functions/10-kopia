@@ -266,7 +266,6 @@ configure_tls() {
 }
 
 fingerprint() {
-
     check_config() {
         if [ -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
             if grep -q "serverCertFingerprint" "${CONFIG_PATH}"/"${CONFIG_FILE}" ; then
@@ -284,8 +283,8 @@ fingerprint() {
 
     check_remote() {
         certificates
-        repository_fingerprint=$(${ssl_exec} s_client -connect "$(echo "${REPOSITORY_HOST}" | sed -E 's/^\s*.*:\/\///g')" < /dev/null 2>/dev/null | openssl x509 -fingerprint -sha256 -noout -in /dev/stdin | cut -d = -f 2 | sed "s|:||g")
-        print_debug "[fingerprint | check_remote] Remote Fingerprint for '$(echo "${REPOSITORY_HOST}" | 's/^\s*.*:\/\///g')' is '${repository_fingerprint}'"
+        repository_fingerprint=$(${ssl_exec} s_client -connect $(echo "${REPOSITORY_HOST}" | sed -E 's/^\s*.*:\/\///g') < /dev/null 2>/dev/null | ${ssl_exec} x509 -fingerprint -sha256 -noout -in /dev/stdin | cut -d = -f 2 | sed 's|:||g')
+        print_debug "[fingerprint | check_remote] Remote Fingerprint for '$(echo "${REPOSITORY_HOST}" | sed -E "s/^\s*.*:\/\///g")' is '${repository_fingerprint}'"
     }
 
     compare_local() {
@@ -324,8 +323,6 @@ fingerprint() {
             "${1}"
         ;;
     esac
-
-    $(${ssl_exec} x509 -in "${TLS_CERT_FILE}" -noout -fingerprint -sha256 | cut -f 2 -d = | sed 's|:||g')
 }
 
 reload() {
@@ -391,7 +388,10 @@ setup_container_mode() {
             if [ ! -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
                 print_notice "[container_mode | repository ] No Repositories setup - Make sure you setup a repository via the GUI or CLI before any other operations"
             fi
-            ## It would be good for this to check its fingerprint and recycle server if things are hardcoded with go rm -rf /etc/services.available/20-fingerprint-tool
+
+            if [ "${FINGERPRINT_MODE,,}" != "auto" ]; then
+                rm -rf /etc/services.available/20-fingerprint-tool
+            fi
             #setup_password
         ;;
         server )
@@ -399,7 +399,10 @@ setup_container_mode() {
             if [ ! -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
                 print_notice "[container_mode | repository ] No Repositories setup - Make sure you setup a repository via the GUI or CLI before any other operations"
             fi
-            ## It would be good for this to check its fingerprint and recycle server if things are hardcoded with go rm -rf /etc/services.available/20-fingerprint-tool as above
+
+            if [ "${FINGERPRINT_MODE,,}" != "auto" ]; then
+                rm -rf /etc/services.available/20-fingerprint-tool
+            fi
             #setup_password
         ;;
         *)
