@@ -1,0 +1,9 @@
+#!/command/with-contenv bash
+
+source /assets/functions/00-container
+PROCESS_NAME="kopia"
+
+if pgrep -f kopia &> /dev/null 2>&1; then
+    print_info "Gracefully shutting down Kopia Server"
+    kopia server shutdown
+fi
