@@ -183,7 +183,7 @@ EOF
 
             if [ ! -f "${1%%.*}"-public.pem ] ; then
                 print_debug "[certificates | create_certificate] Creating Public Key for: ${1}"
-                silent ${ssl_exec} rsa -in "${1%%.*}".pem -out "${1%%.*}"-public.pem -outform PEM -pubout
+                silent "${ssl_exec}" rsa -in "${1%%.*}".pem -out "${1%%.*}"-public.pem -outform PEM -pubout
             fi
         fi
     }
@@ -213,7 +213,7 @@ EOF
     create_dhparam() {
         print_notice "[certificates | create_dhparam] Creating ${TLS_DH_PARAM_FILE}"
         mkdir -p "$(dirname "${TLS_DH_PARAM_FILE}")"
-        silent ${ssl_exec} dhparam -out "${TLS_DH_PARAM_FILE}" "${TLS_DH_PARAM_KEYSIZE}"
+        silent "${ssl_exec}" dhparam -out "${TLS_DH_PARAM_FILE}" "${TLS_DH_PARAM_KEYSIZE}"
     }
 
     trust_ca() {
@@ -265,6 +265,74 @@ configure_tls() {
     fi
 }
 
+fingerprint() {
+
+    check_config() {
+        if [ -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
+            if grep -q "serverCertFingerprint" "${CONFIG_PATH}"/"${CONFIG_FILE}" ; then
+                config_fingerprint=$(jq -r .apiServer.serverCertFingerprint "${CONFIG_PATH}"/"${CONFIG_FILE}")
+                print_debug "[fingerprint | check_config] Locally configured Fingerprint for '${CONFIG_PATH}/${CONFIG_FILE}' is '${config_fingerprint}'"
+            fi
+        fi
+    }
+
+    check_local() {
+        certificates
+        local_fingerprint=$(${ssl_exec} x509 -in "${TLS_CERT_FILE}" -noout -fingerprint -sha256 | cut -f 2 -d = | sed 's|:||g')
+        print_debug "[fingerprint | check_local] Local Fingerprint for '${TLS_CERT_FILE}' is '${local_fingerprint}'"
+    }
+
+    check_remote() {
+        certificates
+        repository_fingerprint=$(${ssl_exec} s_client -connect "$(echo "${REPOSITORY_HOST}" | sed -E 's/^\s*.*:\/\///g')" < /dev/null 2>/dev/null | openssl x509 -fingerprint -sha256 -noout -in /dev/stdin | cut -d = -f 2 | sed "s|:||g")
+        print_debug "[fingerprint | check_remote] Remote Fingerprint for '$(echo "${REPOSITORY_HOST}" | 's/^\s*.*:\/\///g')' is '${repository_fingerprint}'"
+    }
+
+    compare_local() {
+        if [ "${local_fingerprint}" != "$(head -n1 "${CONFIG_PATH}"/.local_fingerprint | awk '{print $1}')" ] ; then
+            print_debug "[fingerprint | compare] FAIL Local vs Remote fingerprints are different!"
+            compared_local=different
+        else
+            print_debug "[fingerprint | compare] PASS Local vs Remote fingerprints are the same"
+            compared_local=match
+        fi
+    }
+
+    compare_config_remote() {
+        if [ "${config_fingerprint}" != "${repository_fingerprint}" ] ; then
+            print_debug "[fingerprint | compare_config_remote] FAIL Local vs Remote fingerprints are different!"
+            compared_config_remote=different
+        else
+            print_debug "[fingerprint | compare_config_remote] PASS Local vs Remote fingerprints are the same"
+            compared_config_remote=match
+        fi
+    }
+
+    rotate_config() {
+        print_debug "[fingerprint | rotate_config] Rotating Fingerprint in Config File"
+        jq '.apiServer.serverCertFingerprint="${repository_fingerprint}"' "${CONFIG_PATH}"/"${CONFIG_FILE}"
+    }
+
+    write_local() {
+        certificates
+        print_debug "[fingerprint | rotate_config] Writing Certificate Fingerprint to '${CONFIG_PATH}/.local_fingerprint'"
+        echo "$(${ssl_exec} x509 -in "${TLS_CERT_FILE}" -noout -fingerprint -sha256 | cut -f 2 -d = | sed 's|:||g') $(date +'%Y-%m-%d.%H:%M:%S')" >> "${CONFIG_PATH}"/.local_fingerprint
+    }
+
+    case "${1,,}" in
+        *)
+            "${1}"
+        ;;
+    esac
+
+    $(${ssl_exec} x509 -in "${TLS_CERT_FILE}" -noout -fingerprint -sha256 | cut -f 2 -d = | sed 's|:||g')
+}
+
+reload() {
+    print_info "Reloading Kopia"
+    pkill -1 kopia
+}
+
 setup_password() {
     if [ -n "${REPOSITORY_PASS}" ] && [ ! -f "${CONFIG_PATH}"/"${CONFIG_PATH}"/"${CONFIG_FILE}".kopia-password ] ; then
         echo "${REPOSITORY_PASS}" | base64 | silent sudo -u kopia tee "${CONFIG_PATH}"/"${CONFIG_FILE}".kopia-password
@@ -283,33 +351,55 @@ setup_container_mode() {
                 sanity_var REPOSITORY_PASS "Pass to connect to remote repository"
                 sanity_var REPOSITORY_FINGERPRINT "Talk to Administrator about Repository Fingerprint"
                 sanity_var REPOSITORY_HOST "Remote repository Host eg 'https://host:port'"
+                if [ "${FINGERPRINT_MODE,,}" = "auto" ]; then
+                    print_debug "[container_mode] Auto Fingerprint Mode"
+                    fingerprint_remote
+                else
+                    print_debug "[container_mode] Manual Fingerprint Mode"
+                    sanity_var REPOSITORY_FINGERPRINT "Talk to Administrator about Repository Fingerprint"
+                    repository_fingerprint="${REPOSITORY_FINGERPRINT}"
+                    rm -rf /etc/services.available/20-fingerprint-tool
+                fi
+
                 #setup_password
                 kopia repository connect server \
                         --config-file="${CONFIG_PATH}"/"${CONFIG_FILE}" \
                         --no-check-for-updates \
                         --no-use-keyring \
                         --log-dir="${LOG_PATH}" \
-                        --log-level=${LOG_LEVEL,,} \
-                        --file-log-level=${LOG_LEVEL_FILE,,} \
+                        --log-level="${LOG_LEVEL,,}" \
+                        --file-log-level="${LOG_LEVEL_FILE,,}" \
                         --log-file="${LOG_FILE}" \
-                        --override-hostname=${KOPIA_HOSTNAME} \
-                        --override-username=${KOPIA_USER} \
-                        --password=${REPOSITORY_PASS} \
-                        --server-cert-fingerprint="${REPOSITORY_FINGERPRINT}" \
+                        --override-hostname="${KOPIA_HOSTNAME}" \
+                        --override-username="${KOPIA_USER}" \
+                        --password="${REPOSITORY_PASS}" \
+                        --server-cert-fingerprint="${repository_fingerprint}" \
                         --timezone="${TIMEZONE}" \
-                        --url ${REPOSITORY_HOST}
+                        --url "${REPOSITORY_HOST}"
             fi
         ;;
-        repository)
+        idle )
+            print_info "[container_mode] Enabling None/Idle Mode"
+            rm -rf /etc/services.available/20-fingerprint-tool
+        ;;
+        manual )
+            print_info "[container_mode] Enabling Manual Mode"
+            rm -rf /etc/services.available/20-fingerprint-tool
+        ;;
+        repository )
             print_info "[container_mode] Enabling Repository Mode"
             if [ ! -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
                 print_notice "[container_mode | repository ] No Repositories setup - Make sure you setup a repository via the GUI or CLI before any other operations"
             fi
-
+            ## It would be good for this to check its fingerprint and recycle server if things are hardcoded with go rm -rf /etc/services.available/20-fingerprint-tool
             #setup_password
         ;;
-        server)
+        server )
             print_info "[container_mode] Enabling Server Mode"
+            if [ ! -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
+                print_notice "[container_mode | repository ] No Repositories setup - Make sure you setup a repository via the GUI or CLI before any other operations"
+            fi
+            ## It would be good for this to check its fingerprint and recycle server if things are hardcoded with go rm -rf /etc/services.available/20-fingerprint-tool as above
             #setup_password
         ;;
         *)
