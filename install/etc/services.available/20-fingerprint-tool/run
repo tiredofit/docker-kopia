@@ -1,0 +1,79 @@
+#!/command/with-contenv bash
+
+source /assets/functions/00-container
+source /assets/defaults/10-kopia
+source /assets/functions/10-kopia
+PROCESS_NAME="fingerprint-tool"
+
+#!/command/with-contenv bash
+
+if [ "${MODE,,}" = "manual" ] || [ "${1,,}" = "manual" ] || [ "${1,,}" = "now" ]; then
+    FINGERPRINT_CHECK_TIME_BEGIN=+0
+    manual=TRUE
+    print_debug "Detected Manual Mode"
+else
+    current_time=$(date +"%s")
+    today=$(date +"%Y%m%d")
+
+    if [[ $FINGERPRINT_CHECK_TIME_BEGIN =~ ^\+(.*)$ ]]; then
+        waittime=$(( ${BASH_REMATCH[1]} * 60 ))
+        target_time=$(($current_time + $waittime))
+    else
+        target_time=$(date --date="${today}${FINGERPRINT_CHECK_TIME_BEGIN}" +"%s")
+        if [[ "$target_time" < "$current_time" ]]; then
+            target_time=$(($target_time + 24*60*60))
+        fi
+        waittime=$(($target_time - $current_time))
+    fi
+    print_debug "Wait Time: ${waittime} Target time: ${target_time} Current Time: ${current_time}"
+    print_info "Next Fingerprint Check at $(date -d @${target_time} +"%Y-%m-%d %T %Z")"
+    sleep $waittime
+fi
+
+while true; do
+    fingerprint_check_start_time=$(date +"%s")
+    print_info "Fingerprint Check routines started time: $(date +'%Y-%m-%d %T %Z')"
+    case "${MODE,,}" in
+        client )
+            if [ -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
+                fingerprint check_config
+                fingerprint check_remote
+                fingerprint compare_config_remote
+                if var_true "${FINGERPRINT_ROTATE_AUTO}" && [ "${compared_config_remote}" = "different" ] ; then
+                    fingerprint rotate_config
+                    reload
+                else
+                    print_debug "Skipping rotating configuration fingerprint"
+                fi
+            else
+                print_info "No Configuration file - Skipping"
+            fi
+        ;;
+        server | repository )
+            if [ ! -f "${CONFIG_PATH}"/.local_fingerprint ] ; then
+                fingerprint write_local
+            else
+                fingerprint check_local
+                fingerprint compare_local
+                if [ "${compared_local}" = "different" ] ; then
+                    print_info "Detected new fingerprint"
+                    fingerprint write_local
+                    reload
+                fi
+            fi
+        ;;
+    esac
+
+    fingerprint_check_finish_time=$(date +"%s")
+    fingerprint_check_total_time=$(echo $((fingerprint_check_finish_time-fingerprint_check_start_time)))
+    print_info "Fingerprint Check routines finish time: $(date -d @${fingerprint_check_finish_time} +"%Y-%m-%d %T %Z")"
+    print_debug "Fingerprint Check routines time taken: $(echo ${fingerprint_check_total_time} | awk '{printf "Hours: %d Minutes: %02d Seconds: %02d", $1/3600, ($1/60)%60, $1%60}')"
+
+    if var_true "${manual}" ; then
+        print_debug "Exiting due to manual mode"
+        exit 0;
+    else
+        print_notice "Sleeping for another $(($FINGERPRINT_CHECK_TIME_FREQ*60-cleanup_total_time)) seconds. Waking up at $(date -d@"$(( $(date +%s)+$(($FINGERPRINT_CHECK_TIME_FREQ*60-fingerprint_check_total_time))))" +"%Y-%m-%d %T %Z") "
+        sleep $(($FINGERPRINT_CHECK_TIME_FREQ*60-fingerprint_check_total_time))
+    fi
+done
