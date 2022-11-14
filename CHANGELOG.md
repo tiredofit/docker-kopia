@@ -1,3 +1,14 @@
+## 0.5.1 2022-11-14 <dave at tiredofit dot ca>
+
+   ### Added
+      - Run benchmarks in various modes if no configuration files
+
+   ### Changed
+      - Change fingerprints to all lower case to avoid false FAIL situations
+      - Re Add cache directory to connect server commands
+      - Minor bugfixes and cleanup
+
+
 ## 0.5.0 2022-11-12 <dave at tiredofit dot ca>
 
    ### Added

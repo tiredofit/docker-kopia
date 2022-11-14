@@ -5,8 +5,6 @@ source /assets/defaults/10-kopia
 source /assets/functions/10-kopia
 PROCESS_NAME="fingerprint-tool"
 
-#!/command/with-contenv bash
-
 if [ "${MODE,,}" = "manual" ] || [ "${1,,}" = "manual" ] || [ "${1,,}" = "now" ]; then
     FINGERPRINT_CHECK_TIME_BEGIN=+0
     manual=TRUE
@@ -26,7 +24,7 @@ else
         waittime=$(($target_time - $current_time))
     fi
     print_debug "Wait Time: ${waittime} Target time: ${target_time} Current Time: ${current_time}"
-    print_info "Next Fingerprint Check at $(date -d @${target_time} +"%Y-%m-%d %T %Z")"
+    print_debug "Next Fingerprint Check at $(date -d @${target_time} +"%Y-%m-%d %T %Z")"
     sleep $waittime
 fi
 
@@ -80,6 +78,7 @@ while true; do
         esac
     else
         print_debug "Not running check routines as Kopia is not running"
+    fi
     fingerprint_check_finish_time=$(date +"%s")
     fingerprint_check_total_time=$(echo $((fingerprint_check_finish_time-fingerprint_check_start_time)))
     print_debug "Fingerprint Check routines finish time: $(date -d @${fingerprint_check_finish_time} +"%Y-%m-%d %T %Z")"

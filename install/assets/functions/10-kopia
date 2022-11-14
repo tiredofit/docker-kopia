@@ -1,40 +1,53 @@
 #!/command/with-contenv bash
 
 benchmark() {
+    compression() {
+        print_notice "[benchmark_compression] Performing Benchmark, please wait"
+        sudo -u kopia kopia benchmark compression --data-file /usr/bin/rclone --print-options "${kopia_args}"
+    }
+
     crypto() {
         print_notice "[benchmark_crypto] Performing Benchmark, please wait"
-        silent sudo -u kopia kopia benchmark crypto --print-options "${kopia_args}"
+        sudo -u kopia kopia benchmark crypto --print-options "${kopia_args}"
     }
 
     ecc() {
         print_notice "[benchmark_ecc] Performing Benchmark, please wait"
-        silent sudo -u kopia kopia benchmark ecc --print-options "${kopia_args}"
+        sudo -u kopia kopia benchmark ecc --print-options "${kopia_args}"
     }
 
     encrypt() {
         print_notice "[benchmark_encrypt] Performing Benchmark, please wait"
-        silent sudo -u kopia kopia benchmark encryption --print-options "${kopia_args}"
+        sudo -u kopia kopia benchmark encryption --print-options "${kopia_args}"
     }
 
     hash() {
         print_notice "[benchmark_hash] Performing Benchmark, please wait"
-        silent sudo -u kopia kopia benchmark hashing --print-options "${kopia_args}"
+        sudo -u kopia kopia benchmark hashing --print-options "${kopia_args}"
     }
 
     split() {
         print_notice "[benchmark_split] Performing Benchmark, please wait"
-        silent sudo -u kopia kopia benchmark splitter --print-options "${kopia_args}"
+        sudo -u kopia kopia benchmark splitter --print-options "${kopia_args}"
     }
 
 
-    if var_true "${ENABLE_BENCHMARK}" ; then
-        kopia_args="--log-dir=${LOG_PATH} --timezone=${TIMEZONE}"
-        crypto
-        ecc
-        encrypt
-        hash
-        split
-    fi
+    kopia_args="--log-dir=${LOG_PATH} --timezone=${TIMEZONE}"
+
+    case "$1" in
+        all )
+            compression
+            crypto
+            ecc
+            encrypt
+            hash
+            split
+        ;;
+        * )
+            "$1"
+        ;;
+    esac
+
 }
 
 bootstrap() {
@@ -270,7 +283,7 @@ fingerprint() {
         if [ -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
             if grep -q "serverCertFingerprint" "${CONFIG_PATH}"/"${CONFIG_FILE}" ; then
                 config_fingerprint=$(jq -r .apiServer.serverCertFingerprint "${CONFIG_PATH}"/"${CONFIG_FILE}")
-                print_debug "[fingerprint | check_config] Locally configured Fingerprint for '${CONFIG_PATH}/${CONFIG_FILE}' is '${config_fingerprint}'"
+                print_debug "[fingerprint | check_config] Locally configured Fingerprint for '${CONFIG_PATH}/${CONFIG_FILE}' is '${config_fingerprint,,}'"
             fi
         fi
     }
@@ -278,13 +291,13 @@ fingerprint() {
     check_local() {
         certificates
         local_fingerprint=$(${ssl_exec} x509 -in "${TLS_CERT_FILE}" -noout -fingerprint -sha256 | cut -f 2 -d = | sed 's|:||g')
-        print_debug "[fingerprint | check_local] Local Fingerprint for '${TLS_CERT_FILE}' is '${local_fingerprint}'"
+        print_debug "[fingerprint | check_local] Local Fingerprint for '${TLS_CERT_FILE}' is '${local_fingerprint,,}'"
     }
 
     check_remote() {
         certificates
         repository_fingerprint=$(${ssl_exec} s_client -connect $(echo "${REPOSITORY_HOST}" | sed -E 's/^\s*.*:\/\///g') < /dev/null 2>/dev/null | ${ssl_exec} x509 -fingerprint -sha256 -noout -in /dev/stdin | cut -d = -f 2 | sed 's|:||g')
-        print_debug "[fingerprint | check_remote] Remote Fingerprint for '$(echo "${REPOSITORY_HOST}" | sed -E "s/^\s*.*:\/\///g")' is '${repository_fingerprint}'"
+        print_debug "[fingerprint | check_remote] Remote Fingerprint for '$(echo "${REPOSITORY_HOST}" | sed -E "s/^\s*.*:\/\///g")' is '${repository_fingerprint,,}'"
     }
 
     compare_local() {
@@ -298,7 +311,7 @@ fingerprint() {
     }
 
     compare_config_remote() {
-        if [ "${config_fingerprint}" != "${repository_fingerprint}" ] ; then
+        if [ "${config_fingerprint,,}" != "${repository_fingerprint,,}" ] ; then
             print_debug "[fingerprint | compare_config_remote] FAIL Local vs Remote fingerprints are different!"
             compared_config_remote=different
         else
@@ -346,21 +359,25 @@ setup_container_mode() {
                 sanity_var KOPIA_USER "Username to connect to remote repository eg 'user'"
                 sanity_var KOPIA_HOSTNAME "Hostname to connect to remote repository eg 'yourhost'"
                 sanity_var REPOSITORY_PASS "Pass to connect to remote repository"
-                sanity_var REPOSITORY_FINGERPRINT "Talk to Administrator about Repository Fingerprint"
                 sanity_var REPOSITORY_HOST "Remote repository Host eg 'https://host:port'"
                 if [ "${FINGERPRINT_MODE,,}" = "auto" ]; then
                     print_debug "[container_mode] Auto Fingerprint Mode"
-                    fingerprint_remote
+                    fingerprint check_remote
                 else
                     print_debug "[container_mode] Manual Fingerprint Mode"
-                    sanity_var REPOSITORY_FINGERPRINT "Talk to Administrator about Repository Fingerprint"
-                    repository_fingerprint="${REPOSITORY_FINGERPRINT}"
+                    sanity_var REPOSITORY_FINGERPRINT "Fingerprint available - Talk to Administrator about Repository Fingerprint"
+                    repository_fingerprint="${REPOSITORY_FINGERPRINT,,}"
                     rm -rf /etc/services.available/20-fingerprint-tool
+                fi
+
+                if var_true "${ENABLE_BENCHMARK}" ; then
+                    benchmark compression
                 fi
 
                 #setup_password
                 kopia repository connect server \
                         --config-file="${CONFIG_PATH}"/"${CONFIG_FILE}" \
+                        --cache-directory="${CACHE_PATH}" \
                         --no-check-for-updates \
                         --no-use-keyring \
                         --log-dir="${LOG_PATH}" \
@@ -370,7 +387,7 @@ setup_container_mode() {
                         --override-hostname="${KOPIA_HOSTNAME}" \
                         --override-username="${KOPIA_USER}" \
                         --password="${REPOSITORY_PASS}" \
-                        --server-cert-fingerprint="${repository_fingerprint}" \
+                        --server-cert-fingerprint="${repository_fingerprint,,}" \
                         --timezone="${TIMEZONE}" \
                         --url "${REPOSITORY_HOST}"
             fi
@@ -387,6 +404,9 @@ setup_container_mode() {
             print_info "[container_mode] Enabling Repository Mode"
             if [ ! -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
                 print_notice "[container_mode | repository ] No Repositories setup - Make sure you setup a repository via the GUI or CLI before any other operations"
+                if var_true "${ENABLE_BENCHMARK}" ; then
+                    benchmark crypto
+                fi
             fi
 
             if [ "${FINGERPRINT_MODE,,}" != "auto" ]; then
@@ -398,6 +418,10 @@ setup_container_mode() {
             print_info "[container_mode] Enabling Server Mode"
             if [ ! -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
                 print_notice "[container_mode | repository ] No Repositories setup - Make sure you setup a repository via the GUI or CLI before any other operations"
+                if var_true "${ENABLE_BENCHMARK}" ; then
+                    benchmark crypto
+                    benchmark compression
+                fi
             fi
 
             if [ "${FINGERPRINT_MODE,,}" != "auto" ]; then

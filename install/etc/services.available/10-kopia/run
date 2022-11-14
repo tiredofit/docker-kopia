@@ -45,7 +45,8 @@ case "${MODE,,}" in
             certificates
             case "${MODE,,}" in
                 repository )
-                    print_notice "[repository] Provide this SHA256 Hash to clients: $(${ssl_exec} x509 -in "${TLS_CERT_FILE}" -noout -fingerprint -sha256 | cut -f 2 -d = | sed 's|:||g')"
+                    lowercase_fingerprint=$(${ssl_exec} x509 -in "${TLS_CERT_FILE}" -noout -fingerprint -sha256 | cut -f 2 -d = | sed 's|:||g')
+                    print_notice "[repository] Provide this SHA256 Hash to clients: ${lowercase_fingerprint,,}"
                     grpc_args="--grpc"
                 ;;
             esac
@@ -76,6 +77,7 @@ case "${MODE,,}" in
                 server \
                 start \
                 --address="0.0.0.0:${KOPIA_LISTEN_PORT}" \
+                --cache-directory="${CACHE_PATH}" \
                 --config-file="${CONFIG_PATH}"/"${CONFIG_FILE}" \
                 --disable-csrf-token-checks \
                 --no-check-for-updates \
