@@ -374,6 +374,12 @@ setup_container_mode() {
                     benchmark compression
                 fi
 
+                if var_true "${ENABLE_ACTIONS}" ; then
+                    action_args="--enable-actions"
+                else
+                    action_args="--no-enable-actions"
+                fi
+
                 #setup_password
                 kopia repository connect server \
                         --config-file="${CONFIG_PATH}"/"${CONFIG_FILE}" \
@@ -389,7 +395,7 @@ setup_container_mode() {
                         --password="${REPOSITORY_PASS}" \
                         --server-cert-fingerprint="${repository_fingerprint,,}" \
                         --timezone="${TIMEZONE}" \
-                        --url "${REPOSITORY_HOST}"
+                        --url "${REPOSITORY_HOST}" ${action_args}
             fi
         ;;
         idle )
