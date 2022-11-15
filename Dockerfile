@@ -27,6 +27,7 @@ RUN source /assets/functions/00-container && \
     clone_git_repo "${KOPIA_REPO_URL}" "${KOPIA_VERSION}" && \
     make -j$(nproc) install && \
     cp /root/go/bin/kopia /usr/sbin && \
+    ln -s /usr/bin/fusermount3 /usr/sbin/fusemount && \
     #
     apk del .kopia-build-deps && \
     rm -rf /usr/src/* && \
