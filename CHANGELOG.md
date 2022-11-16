@@ -1,3 +1,9 @@
+## 0.5.2 2022-11-15 <dave at tiredofit dot ca>
+
+   ### Changed
+      - Bugfix for Fingerprint timer
+
+
 ## 0.5.1 2022-11-14 <dave at tiredofit dot ca>
 
    ### Added

@@ -301,7 +301,7 @@ fingerprint() {
     }
 
     compare_local() {
-        if [ "${local_fingerprint}" != "$(head -n1 "${CONFIG_PATH}"/.local_fingerprint | awk '{print $1}')" ] ; then
+        if [ "${local_fingerprint}" != "$(tail -n1 "${CONFIG_PATH}"/.local_fingerprint | awk '{print $1}')" ] ; then
             print_debug "[fingerprint | compare] FAIL Local vs Remote fingerprints are different!"
             compared_local=different
         else
@@ -328,7 +328,8 @@ fingerprint() {
     write_local() {
         certificates
         print_debug "[fingerprint | rotate_config] Writing Certificate Fingerprint to '${CONFIG_PATH}/.local_fingerprint'"
-        echo "$(${ssl_exec} x509 -in "${TLS_CERT_FILE}" -noout -fingerprint -sha256 | cut -f 2 -d = | sed 's|:||g') $(date +'%Y-%m-%d.%H:%M:%S')" >> "${CONFIG_PATH}"/.local_fingerprint
+        write_local="$(${ssl_exec} x509 -in "${TLS_CERT_FILE}" -noout -fingerprint -sha256 | cut -f 2 -d = | sed 's|:||g')"
+        echo "${write_local,,} $(date +'%Y-%m-%d.%H:%M:%S')" >> "${CONFIG_PATH}"/.local_fingerprint
     }
 
     case "${1,,}" in
