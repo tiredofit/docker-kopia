@@ -33,6 +33,8 @@ TLS_KEY_FILE=${TLS_KEY_FILE:-"/certs/cert.key"}
 UI_SITE_TITLE_PREFIX=${UI_SITE_TITLE_PREFIX:-"Kopia Docker - "}
 UI_ADMIN_USER=${UI_ADMIN_USER:-"kopia"}
 UI_ADMIN_PASS=${UI_ADMIN_PASS:-"kopia"}
+SERVER_ADMIN_USER=${SERVER_ADMIN_USER:-"kopia"}
+SERVER_ADMIN_PASS=${SERVER_ADMIN_PASS:-"kopia"}
 
 case "${MODE,,}" in
     repository)

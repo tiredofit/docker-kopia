@@ -87,6 +87,8 @@ case "${MODE,,}" in
                 --file-log-level="${LOG_LEVEL_FILE,,}" \
                 --log-file="${LOG_FILE}" \
                 --override-username="${KOPIA_USER}" \
+                --server-control-password="${SERVER_ADMIN_PASS}" \
+                --server-control-username="${SERVER_ADMIN_USER}" \
                 --timezone="${TIMEZONE}" \
                 ${gui_args} ${grpc_args} ${metrics_args} ${persist_credentials} ${tls_args} ${KOPIA_SERVER_ARGS}
     ;;

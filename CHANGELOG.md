@@ -1,3 +1,12 @@
+## 0.5.4 2022-11-16 <dave at tiredofit dot ca>
+
+   ### Added
+      - Introduce SERVER_ADMIN_USER and SERVER_ADMIN_PASS to map out --server-admin-username and --server-admin-password flags when necessary
+
+   ### Changed
+      - Update graceful shutdown command based on new variables
+
+
 ## 0.5.3 2022-11-16 <dave at tiredofit dot ca>
 
    ### Changed
