@@ -8,9 +8,9 @@ services:
       - traefik.enable=true
       - traefik.http.routers.kopia-app.rule=Host(`kopia.example.com`)
       - traefik.http.services.kopia-app.loadbalancer.server.scheme=https
-      - traefik.http.services.kopia-app.loadbalancer.server.port=51115
+      - traefik.http.services.kopia-app.loadbalancer.server.port=51515
     #ports:
-      #- 51115:51115
+      #- 51515:51515
     volumes:    
       #- ./backup:/backup # Only needed if backing up to local system
       - ./cache:/cache   # 

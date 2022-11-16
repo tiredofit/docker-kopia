@@ -110,7 +110,7 @@ The following ports are exposed.
 
 | Port    | Description             |
 | ------- | ----------------------- |
-| `51115` | Kopia GRPC Server or UI |
+| `51515` | Kopia GRPC Server or UI |
 
 * * *
 ## Maintenance
