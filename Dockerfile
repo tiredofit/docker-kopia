@@ -1,4 +1,4 @@
-FROM docker.io/tiredofit/alpine:3.16
+FROM docker.io/tiredofit/alpine:3.17
 LABEL maintainer="Dave Conroy (github.com/tiredofit)"
 
 ENV KOPIA_VERSION=v0.12.1 \
@@ -20,6 +20,7 @@ RUN source /assets/functions/00-container && \
                && \
     \
     apk add -t .kopia-run-deps \
+               openssl \ 
                fuse3 \
                rclone \
                && \
