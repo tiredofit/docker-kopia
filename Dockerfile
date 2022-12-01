@@ -11,15 +11,15 @@ RUN source /assets/functions/00-container && \
     set -x && \
     addgroup -g 51115 kopia && \
     adduser -S -D -G kopia -u 51115 -h /dev/null kopia && \
-    apk update && \
-    apk upgrade && \
-    apk add -t .kopia-build-deps \
+    package update && \
+    package upgrade && \
+    package install .kopia-build-deps \
                go \
                git \
                make \
                && \
     \
-    apk add -t .kopia-run-deps \
+    package install .kopia-run-deps \
                openssl \ 
                fuse3 \
                rclone \
@@ -29,12 +29,12 @@ RUN source /assets/functions/00-container && \
     make -j$(nproc) install && \
     cp /root/go/bin/kopia /usr/sbin && \
     ln -s /usr/bin/fusermount3 /usr/sbin/fusemount && \
-    #
-    apk del .kopia-build-deps && \
-    rm -rf /usr/src/* && \
-    rm -rf /root/.cache && \
-    rm -rf /root/.go && \
-    rm -rf /root/go && \
-    rm -rf /tmp/* /var/cache/apk/*
+    package del .kopia-build-deps && \
+    package cleanup && \
+    rm -rf /root/.cache \
+           /root/.go  \
+           /root/go \
+           /tmp/* \
+           /usr/src/*
 
 COPY install /
