@@ -278,6 +278,19 @@ configure_tls() {
     fi
 }
 
+configure_monitoring() {
+        if var_true "${CONTAINER_ENABLE_MONITORING}" && [ "${CONTAINER_MONITORING_BACKEND,,}" = "zabbix" ]; then
+            source /assets/defaults/03-monitoring
+            cat <<EOF > "${ZABBIX_CONFIG_PATH}"/"${ZABBIX_CONFIG_FILE}".d/tiredofit-kopia.conf
+# Zabbix Kopia Configuration - Automatically generated based on container startup options
+# Find Companion Zabbix Server Templates at https://github.com/tiredofit/docker-kopia
+# Autoregister=kopia
+
+UserParameter=kopia.version,kopia --version | head -n1 | awk '{print $1}'
+EOF
+        fi
+}
+
 fingerprint() {
     check_config() {
         if [ -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then

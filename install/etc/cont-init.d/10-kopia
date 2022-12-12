@@ -6,6 +6,7 @@ PROCESS_NAME="kopia"
 
 bootstrap
 configure_tls
+configure_monitoring
 setup_container_mode
 
 liftoff

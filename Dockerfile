@@ -1,11 +1,16 @@
-FROM docker.io/tiredofit/alpine:3.17
+ARG DISTRO="alpine"
+ARG DISTRO_VARIANT="3.17"
+
+FROM docker.io/tiredofit/${DISTRO}:${DISTRO_VARIANT}
 LABEL maintainer="Dave Conroy (github.com/tiredofit)"
 
-ENV KOPIA_VERSION=v0.12.1 \
+ARG KOPIA_VERSION
+
+ENV KOPIA_VERSION=${KOPIA_VERSION:-"v0.12.1"} \
     KOPIA_REPO_URL=https://github.com/kopia/kopia \
     KOPIA_CHECK_FOR_UPDATES=FALSE \
     IMAGE_NAME=tiredofit/kopia \
-    IMAGE_REPO_URL=https://github.com/tireofit/docker/kopia
+    IMAGE_REPO_URL=https://github.com/tireofit/docker-kopia
 
 RUN source /assets/functions/00-container && \
     set -x && \
@@ -20,7 +25,7 @@ RUN source /assets/functions/00-container && \
                && \
     \
     package install .kopia-run-deps \
-               openssl \ 
+               openssl \
                fuse3 \
                rclone \
                && \

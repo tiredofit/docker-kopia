@@ -1,0 +1,102 @@
+{
+    "zabbix_export": {
+        "version": "6.2",
+        "date": "2022-12-12T19:35:18Z",
+        "template_groups": [
+            {
+                "uuid": "a571c0d144b14fd4a87a9d9b2aa9fcd6",
+                "name": "Templates/Applications"
+            }
+        ],
+        "templates": [
+            {
+                "uuid": "dbe700c8c034423385ab57acfca35925",
+                "template": "Kopia",
+                "name": "Kopia",
+                "description": "Kopia Zabbix monitoring\n\nThis template is meant to be used specifically for https://github.com/tiredofit/docker-kopia",
+                "groups": [
+                    {
+                        "name": "Templates/Applications"
+                    }
+                ],
+                "items": [
+                    {
+                        "uuid": "c36099723d014fc1bd10670ab2e56a37",
+                        "name": "Kopia: Version",
+                        "type": "ZABBIX_ACTIVE",
+                        "key": "kopia.version",
+                        "delay": "60m",
+                        "history": "7d",
+                        "trends": "0",
+                        "value_type": "CHAR",
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Fail2Ban"
+                            }
+                        ],
+                        "triggers": [
+                            {
+                                "uuid": "9fcf59386c214212a65c4467acd98dfb",
+                                "expression": "last(/Kopia/kopia.version,#1)<>last(/Kopia/kopia.version,#2) \nand length(last(/Kopia/kopia.version))>0",
+                                "name": "Kopia: Version has changed (new version: { ITEM.VALUE })",
+                                "priority": "INFO"
+                            }
+                        ]
+                    },
+                    {
+                        "uuid": "1de47c17f3e4451282997dfe219236e0",
+                        "name": "Koia: Processes",
+                        "type": "ZABBIX_ACTIVE",
+                        "key": "proc.num[kopia]",
+                        "history": "7d",
+                        "description": "Tests if the server is alive",
+                        "valuemap": {
+                            "name": "Service state"
+                        },
+                        "tags": [
+                            {
+                                "tag": "Application",
+                                "value": "Kopia"
+                            }
+                        ],
+                        "triggers": [
+                            {
+                                "uuid": "e4911fcfa0cf4fd588b5b82f80d99ecd",
+                                "expression": "sum(/Kopia/proc.num[kopia],#3)=0",
+                                "name": "Kopia: Process is not running",
+                                "priority": "AVERAGE"
+                            }
+                        ]
+                    }
+                ],
+                "tags": [
+                    {
+                        "tag": "Service",
+                        "value": "Backup"
+                    },
+                    {
+                        "tag": "Service",
+                        "value": "Baremetal"
+                    }
+                ],
+                "valuemaps": [
+                    {
+                        "uuid": "037922f98cca4751bdbd83e178456e83",
+                        "name": "Service state",
+                        "mappings": [
+                            {
+                                "value": "0",
+                                "newvalue": "Down"
+                            },
+                            {
+                                "value": "1",
+                                "newvalue": "Up"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}

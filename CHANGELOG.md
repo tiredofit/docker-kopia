@@ -1,3 +1,9 @@
+## 0.7.0 2022-12-12 <dave at tiredofit dot ca>
+
+   ### Added
+      - Add basic Zabbix process monitoring checks
+
+
 ## 0.6.0 2022-12-01 <dave at tiredofit dot ca>
 
    ### Changed
