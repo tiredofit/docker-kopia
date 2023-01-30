@@ -2,7 +2,7 @@
 
 
 [![GitHub release](https://img.shields.io/github/v/tag/tiredofit/docker-kopia?style=flat-square)](https://github.com/tiredofit/docker-kopia/releases/latest)
-[![Build Status](https://img.shields.io/github/workflow/status/tiredofit/docker-kopia/build?style=flat-square)](https://github.com/tiredofit/docker-kopia/actions?query=workflow%3Abuild)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/tiredofit/docker-kopia/main.yml?branch=main&style=flat-square)](https://github.com/tiredofit/docker-kopia/actions)
 [![Docker Stars](https://img.shields.io/docker/stars/tiredofit/kopia.svg?style=flat-square&logo=docker)](https://hub.docker.com/r/tiredofit/kopia/)
 [![Docker Pulls](https://img.shields.io/docker/pulls/tiredofit/kopia.svg?style=flat-square&logo=docker)](https://hub.docker.com/r/tiredofit/kopia/)
 [![Become a sponsor](https://img.shields.io/badge/sponsor-tiredofit-181717.svg?logo=github&style=flat-square)](https://github.com/sponsors/tiredofit)
