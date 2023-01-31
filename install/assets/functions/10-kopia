@@ -55,21 +55,24 @@ bootstrap() {
         mkdir -p "${BACKUP_PATH}"
     fi
 
+    chown kopia:kopia "${BACKUP_PATH}"
+
     if [ ! -d "${CACHE_PATH}" ] ; then
         mkdir -p "${CACHE_PATH}"
     fi
+
+    chown kopia:kopia "${CACHE_PATH}"
 
     if [ ! -d "${CONFIG_PATH}" ] ; then
         mkdir -p "${CONFIG_PATH}"
     fi
 
+    chown -R kopia:kopia "${CONFIG_PATH}"
+
     if [ ! -d "${LOG_PATH}" ] ; then
         mkdir -p "${LOG_PATH}"
     fi
 
-    chown kopia:kopia "${BACKUP_PATH}"
-    chown kopia:kopia "${CACHE_PATH}"
-    chown -R kopia:kopia "${CONFIG_PATH}"
     chown -R kopia:kopia "${LOG_PATH}"
 
     #echo "alias kopia=\"sudo -Eu KOPIA_LOG_DIR=\""${LOG_PATH}"\" kopia kopia --log-file=\""${LOG_FILE}"\" --timezone=\""${TIMEZONE}"\"\"" >> /root/.bashrc
@@ -258,17 +261,19 @@ EOF
         ssl_exec="openssl"
     fi
 
-    case "${1,,}" in
-        "dhparam" )
-            check_dhparam
-        ;;
-        *)
-            cert_string="${1}"
-            check_certificates "${cert_string}"
-            check_permissions "${cert_string}"
-            trust_ca
-        ;;
-    esac
+    if [ -n "${1}" ] ; then
+        case "${1,,}" in
+            "dhparam" )
+                check_dhparam
+            ;;
+            *)
+                cert_string="${1}"
+                check_certificates "${cert_string}"
+                check_permissions "${cert_string}"
+                trust_ca
+            ;;
+        esac
+    fi
 }
 
 configure_tls() {
@@ -314,7 +319,7 @@ fingerprint() {
     }
 
     compare_local() {
-        if [ "${local_fingerprint}" != "$(tail -n1 "${CONFIG_PATH}"/.local_fingerprint | awk '{print $1}')" ] ; then
+        if [ "${local_fingerprint,,}" != "$(tail -n1 "${CONFIG_PATH}"/.local_fingerprint | awk '{print $1}')" ] ; then
             print_debug "[fingerprint | compare] FAIL Local vs Remote fingerprints are different!"
             compared_local=different
         else
