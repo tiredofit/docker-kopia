@@ -300,7 +300,7 @@ fingerprint() {
     check_config() {
         if [ -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
             if grep -q "serverCertFingerprint" "${CONFIG_PATH}"/"${CONFIG_FILE}" ; then
-                config_fingerprint=$(jq -r .apiServer.serverCertFingerprint "${CONFIG_PATH}"/"${CONFIG_FILE}")
+                config_fingerprint=$(yq .apiServer.serverCertFingerprint "${CONFIG_PATH}"/"${CONFIG_FILE}")
                 print_debug "[fingerprint | check_config] Locally configured Fingerprint for '${CONFIG_PATH}/${CONFIG_FILE}' is '${config_fingerprint,,}'"
             fi
         fi
@@ -340,7 +340,8 @@ fingerprint() {
 
     rotate_config() {
         print_debug "[fingerprint | rotate_config] Rotating Fingerprint in Config File"
-        jq '.apiServer.serverCertFingerprint="${repository_fingerprint}"' "${CONFIG_PATH}"/"${CONFIG_FILE}"
+        export FINGERPRINT=${repository_fingerprint}
+        yq '.apiServer.serverCertFingerprint = env(FINGERPRINT)' "${CONFIG_PATH}"/"${CONFIG_FILE}"
     }
 
     write_local() {
@@ -380,12 +381,18 @@ setup_container_mode() {
                 sanity_var REPOSITORY_PASS "Pass to connect to remote repository"
                 sanity_var REPOSITORY_HOST "Remote repository Host eg 'https://host:port'"
                 if [ "${FINGERPRINT_MODE,,}" = "auto" ]; then
-                    print_debug "[container_mode] Auto Fingerprint Mode"
-                    fingerprint check_remote
+                    if [ -f "${CONFIG_PATH}"/"${CONFIG_FILE}" ] ; then
+                        print_debug "[container_mode] Auto Fingerprint Mode"
+                        fingerprint check_config
+                        fingerprint check_remote
+                        if [ "${config_fingerprint,,}" != "${repository_fingerprint,,}" ] ; then
+                            fingerprint_rotate_config
+                        fi
+                    fi
                 else
                     print_debug "[container_mode] Manual Fingerprint Mode"
                     sanity_var REPOSITORY_FINGERPRINT "Fingerprint available - Talk to Administrator about Repository Fingerprint"
-                    repository_fingerprint="${REPOSITORY_FINGERPRINT,,}"
+                    export repository_fingerprint="${REPOSITORY_FINGERPRINT,,}"
                     rm -rf /etc/services.available/20-fingerprint-tool
                 fi
 

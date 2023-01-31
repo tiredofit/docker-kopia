@@ -1,3 +1,12 @@
+## 0.7.1 2023-01-30 <dave at tiredofit dot ca>
+
+   ### Changed
+      - Fix Server side fingerprint checks to convert all to lowercase
+      - Use YQ instead of jq
+      - On client startup - if fingerprint_mode is AUTO then check/write key if different on startup rather than wait for fingerprint tool
+      - Switch Fingerprint check time to 55 minutes from 10
+
+
 ## 0.7.0 2022-12-12 <dave at tiredofit dot ca>
 
    ### Added
