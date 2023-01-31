@@ -1,3 +1,9 @@
+## 0.7.2 2023-01-30 <dave at tiredofit dot ca>
+
+   ### Changed
+      - Change compose examples
+
+
 ## 0.7.1 2023-01-30 <dave at tiredofit dot ca>
 
    ### Changed

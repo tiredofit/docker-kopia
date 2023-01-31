@@ -38,7 +38,7 @@ while true; do
                     fingerprint check_config
                     fingerprint check_remote
                     fingerprint compare_config_remote
-                    if var_true "${FINGERPRINT_ROTATE_AUTO}" && [ "${compared_config_remote}" = "different" ] ; then
+                    if [ "${FINGERPRINT_MODE}" = "auto" ] && [ "${compared_config_remote}" = "different" ] ; then
                         fingerprint rotate_config
                         reload
                     else
