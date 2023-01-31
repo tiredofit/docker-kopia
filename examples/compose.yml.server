@@ -1,6 +1,4 @@
-version: '2.4'
 services:
-
   kopia-app:
     image: tiredofit/kopia:latest
     container_name: kopia-app
@@ -11,9 +9,9 @@ services:
       - traefik.http.services.kopia-app.loadbalancer.server.port=51515
     #ports:
       #- 51515:51515
-    volumes:    
+    volumes:
       #- ./backup:/backup # Only needed if backing up to local system
-      - ./cache:/cache   # 
+      - ./cache:/cache   #
       - ./config:/config # Persistent Configuration
       - ./logs:/logs     # Log Files
       - /:/rootfs:ro     # A Way to Access files on your local host system in order to backup
@@ -28,7 +26,7 @@ services:
 
       - MODE=server
 
-      - ENABLE_TLS=FALSE # See TLS options - 
+      - ENABLE_TLS=FALSE # See TLS options -
       - KOPIA_HOSTNAME=host_to_present_to_the_server_for_host_backups
       - KOPIA_USER=user_to_present_to_the_server_for_host_backups
 

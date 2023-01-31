@@ -53,16 +53,20 @@ This will build a Docker image for [kopia](https://www.kopia.io), a backup serrv
 ## Installation
 
 ### Build from Source
-Clone this repository and build the image with `docker build <arguments> (imagename) .`
+Clone this repository and build the image with `docker build -t <arguments> (imagename) .`
 
 ### Prebuilt Images
 Builds of the image are available on [Docker Hub](https://hub.docker.com/r/tiredofit/kopia)
 
-Builds of the image are also available on the [Github Container Registry](https://github.com/tiredofit/docker-kopia/pkgs/container/docker-kopia) 
- 
+```
+docker pull tiredofit/kopia:(imagetag)
+```
+
+Builds of the image are also available on the [Github Container Registry](https://github.com/tiredofit/docker-kopia/pkgs/container/docker-kopia)
+
 ```
 docker pull ghcr.io/tiredofit/docker-kopia:(imagetag)
-``` 
+```
 
 The following image tags are available along with their tagged release based on what's written in the [Changelog](CHANGELOG.md):
 
@@ -70,9 +74,6 @@ The following image tags are available along with their tagged release based on 
 | ----------- | --------- |
 | latest      | `:latest` |
 
-```bash
-docker pull docker.io/tiredofdit/kopia:(imagetag)
-```
 #### Multi Architecture
 Images are built primarily for `amd64` architecture, and may also include builds for `arm/v7`, `arm64` and others. These variants are all unsupported. Consider [sponsoring](https://github.com/sponsors/tiredofit) my work so that I can work with various hardware. To see if this image supports multiple architecures, type `docker manifest (image):(tag)`
 
@@ -80,7 +81,7 @@ Images are built primarily for `amd64` architecture, and may also include builds
 
 ### Quick Start
 
-* The quickest way to get started is using [docker-compose](https://docs.docker.com/compose/). See the examples folder for a working [docker-compose.yml](examples/docker-compose.yml) that can be modified for development or production use.
+* The quickest way to get started is using [docker-compose](https://docs.docker.com/compose/). See the examples folder for a working [compose.yml](examples/compose.yml) that can be modified for development or production use.
 
 * Set various [environment variables](#environment-variables) to understand the capabilities of this image.
 * Map [persistent storage](#data-volumes) for access to configuration and data files for backup.
